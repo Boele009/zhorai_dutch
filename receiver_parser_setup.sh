@@ -20,6 +20,7 @@ if [ ! -d stanford-corenlp-* ]; then
     unzip stanford-corenlp-full-2018-10-05.zip
     rm stanford-corenlp-full-2018-10-05.zip
 fi
+echo "$PWD"
 cd stanford-corenlp-full-2018-10-05
 ls && pwd && echo "Starting the StanfordCoreNLPServer..."
 java -mx6g -cp "*" edu.stanford.nlp.pipeline.StanfordCoreNLPServer -timeout 5000 &

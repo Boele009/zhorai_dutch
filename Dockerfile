@@ -39,6 +39,7 @@ RUN pip3 --version
 RUN pip3 install -I nltk==3.0.5
 RUN python3.6 -m nltk.downloader punkt
 RUN python3.6 -m nltk.downloader wordnet
+RUN python -m nltk.downloader omw-1.4
 # install other libraries
 RUN pip3 install lxml simplejson pyyaml
 RUN apt-get install -y libxml2-dev libxslt-dev

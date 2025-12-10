@@ -15,15 +15,17 @@ sentences=$2
 # python ccg2lambda/en/candc2transccg.py $outpath/sentences.candc.xml > $outpath/sentences.xml
 
 #build dictionary output for word embedder
-retVal=$(python3.6 parserOutput.py "$type" "$sentences");
-if [ -z "$retVal" ]
-then
+retVal=$(python3 parserOutput.py "$type" "$sentences" 2>&1)
+status=$?
+
+if [ $status -ne 0 ] || [ -z "$retVal" ]; then
     echo "START$type"
-    echo 'ERROR: BAD ENGLISH'
+    echo "ERROR: BAD ENGLISH"
+    echo "$retVal"   # contains stderr or empty stdout
     echo "END$type"
 else
     echo "START$type"
     echo "$retVal"
-    echo 'OK'
+    echo "OK"
     echo "END$type"
 fi

@@ -10,11 +10,11 @@ var msg; // this is global because of a strange bug: https://stackoverflow.com/a
 function speakText(text, onSpeak, callback) {
     // FROM https://developers.google.com/web/updates/2014/01/Web-apps-that-talk-Introduction-to-the-Speech-Synthesis-API
     msg = new SpeechSynthesisUtterance(makePhonetic(text));
-
+    
     msg.voice = zhoraiVoice; // Note: some voices don't support altering params
     msg.volume = 1; // 0 to 1
-    msg.rate = 1.2; // 0.1 to 10
-    msg.pitch = 2; // 0 to 2
+    msg.rate = 1; // 0.1 to 10
+    msg.pitch = 1.2; // 0 to 2
     msg.lang = 'en-US';
 
     // onSpeak e.g., set the button to the "hear again" button
