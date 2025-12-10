@@ -1,7 +1,7 @@
 ###############################
 ### PYTHON: SEMANTIC-PARSER ###
 ###############################
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 # Create directory in container:
 WORKDIR /usr/src/semantic-parser
@@ -11,7 +11,6 @@ COPY ./word-similarity /usr/src/word-similarity
 
 # install python3.6
 RUN apt-get update \
-  && apt-get -y purge python3.5 \
   && apt install software-properties-common -y && add-apt-repository -y ppa:deadsnakes/ppa \
   && apt-get update && apt-get install -y python3.6 \
   && update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1 \
