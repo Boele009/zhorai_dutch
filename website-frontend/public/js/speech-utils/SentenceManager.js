@@ -12,6 +12,78 @@ class SentenceManager {
         this._currIdNum = 0;
     }
 
+    async translateToEnglish(text) {
+    // Controleer eerst of de API beschikbaar is
+    if (!("Translator" in window)) {
+        console.error("Translator API wordt niet ondersteund door deze browser.");
+        return null;
+    }
+
+    // Optioneel: check beschikbaarheid van het vertaalmodel
+    const avail = await Translator.availability({
+        sourceLanguage: "nl",
+        targetLanguage: "en"
+    });
+    if (avail === "unavailable") {
+        console.error("Vertaalmodel voor nl→en is niet beschikbaar.");
+        return null;
+    }
+
+    // Maak een Translator-instantie aan
+    const translator = await Translator.create({
+        sourceLanguage: "nl",
+        targetLanguage: "en"
+    });
+
+    try {
+        // Vertaal de tekst
+        const translation = await translator.translate(text);
+        return translation;
+    } catch (err) {
+        console.error("Vertaling mislukt:", err);
+        return null;
+    } finally {
+        // Ruim resources op
+        translator.destroy();
+    }
+    }
+
+    async translateToDutch(text) {
+    // Controleer eerst of de API beschikbaar is
+    if (!("Translator" in window)) {
+        console.error("Translator API wordt niet ondersteund door deze browser.");
+        return null;
+    }
+
+    // Optioneel: check beschikbaarheid van het vertaalmodel
+    const avail = await Translator.availability({
+        sourceLanguage: "en",
+        targetLanguage: "nl"
+    });
+    if (avail === "unavailable") {
+        console.error("Vertaalmodel voor en→nl is niet beschikbaar.");
+        return null;
+    }
+
+    // Maak een Translator-instantie aan
+    const translator = await Translator.create({
+        sourceLanguage: "en",
+        targetLanguage: "nl"
+    });
+
+    try {
+        // Vertaal de tekst
+        const translation = await translator.translate(text);
+        return translation;
+    } catch (err) {
+        console.error("Vertaling mislukt:", err);
+        return null;
+    } finally {
+        // Ruim resources op
+        translator.destroy();
+    }
+    }
+
     /* --- public methods for adding/removing div and session info --- */
     /**
      * Adds a new sentence to the session storage and adds a new div 
@@ -20,12 +92,12 @@ class SentenceManager {
      * @param {*} key : The key where the sentences are stored (e.g., "camel")
      * @param {*} sentence : The sentence to be stored and visualized
      */
-    newSentence(key, sentence) {
+    async newSentence(key, sentence) {
         // add div
         this._addSentenceDiv(key, this._currIdNum, sentence);
-
+        var translated_sentence = await this.translateToEnglish(sentence);
         // add sentence to session
-        this._saveSessionSentence(key, this._currIdNum, sentence);
+        this._saveSessionSentence(key, this._currIdNum, translated_sentence);
 
         // keep track of number of sentences for id'ing the sentences
         this._currIdNum++;
@@ -40,7 +112,10 @@ class SentenceManager {
      */
     setDivToSessionSentences(key) {
         // delete all sentences on div:
+        console.log("Removing all sentence divs before adding session sentences.");
         this._removeAllSentenceDivs();
+
+        console.log("Adding all session sentences to div for key: " + key);
         // add all sentences to div (note that _currId gets updated in this method):
         this._addSessionSentencesToDiv(key);
     }
@@ -50,7 +125,7 @@ class SentenceManager {
      * Note that it updates the _currId to the [maximum value of ids in session +1].
      * @param {*} key : The key where the sentences are stored (e.g., "camel")
      */
-    _addSessionSentencesToDiv(key) {
+    async _addSessionSentencesToDiv(key) {
         // sessionData: {sentences: {sent0: "...", sent1: "..."}}
         var sessionData = SentenceManager.getSessionData(key);
 
@@ -65,7 +140,7 @@ class SentenceManager {
                 var currId = ids[i];
                 var idNum = parseInt(currId.replace('sent', ''));
                 // add the sentence to the div:
-                this._addSentenceDiv(key, idNum, sentences[currId]);
+                this._addSentenceDiv(key, idNum, await translateToDutch(sentences[currId]));
 
                 // update the maxId if necessary
                 if (idNum > maxId) {

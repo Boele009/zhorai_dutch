@@ -97,6 +97,42 @@ var oceanSentences = 'The ocean is filled with water. ' +
     'The ocean has the most animals out of all the biomes. ' +
     'The ocean is like a big sea';
 
+async function translateToEnglish(text) {
+  // Controleer eerst of de API beschikbaar is
+  if (!("Translator" in window)) {
+    console.error("Translator API wordt niet ondersteund door deze browser.");
+    return null;
+  }
+
+  // Optioneel: check beschikbaarheid van het vertaalmodel
+  const avail = await Translator.availability({
+    sourceLanguage: "nl",
+    targetLanguage: "en"
+  });
+  if (avail === "unavailable") {
+    console.error("Vertaalmodel voor nl→en is niet beschikbaar.");
+    return null;
+  }
+
+  // Maak een Translator-instantie aan
+  const translator = await Translator.create({
+    sourceLanguage: "nl",
+    targetLanguage: "en"
+  });
+
+  try {
+    // Vertaal de tekst
+    const translation = await translator.translate(text);
+    return translation;
+  } catch (err) {
+    console.error("Vertaling mislukt:", err);
+    return null;
+  } finally {
+    // Ruim resources op
+    translator.destroy();
+  }
+}
+
 /* -------------- Initialize functions -------------- */
 function showPurpleText(text) {
     zhoraiSpeechBox.innerHTML = '<p style="color:' + zhoraiTextColour + '">' + text + '</p>';
@@ -164,35 +200,36 @@ function switchButtonTo(toButton) {
     }
 }
 
-function afterRecording(recordedText) {
+async function afterRecording(recordedText) {
+    var translated_text = await translateToEnglish(recordedText);
     var saidKnownEco = false;
     var ecoSentences = '';
     var zhoraiSpeech = '';
     var phrases = [];
-
+    console.log('Translated text: ' + translated_text);
     // test to see if what they said has an ecosystem in it... e.g., "I didn't quite catch that"
     var knownEcosystems = ['ocean', 'desert', 'rainforest', 'grassland', 'tundra'];
     var knownRegex = new RegExp(knownEcosystems.join("|"), "i");
-    saidKnownEco = knownRegex.test(recordedText);
+    saidKnownEco = knownRegex.test(translated_text);
 
     // check if there was a known ecosystem stated
     if (saidKnownEco) {
         // get the particular ecosystem stated:
         var eco = '';
-        if (recordedText.toLowerCase().includes('ocean')) {
-            eco = 'ocean';
+        if (translated_text.toLowerCase().includes('ocean')) {
+            eco = 'oceanen';
             ecoSentences = oceanSentences;
-        } else if (recordedText.toLowerCase().includes('desert')) {
-            eco = 'desert';
+        } else if (translated_text.toLowerCase().includes('desert')) {
+            eco = 'woestijnen';
             ecoSentences = desertSentences;
-        } else if (recordedText.toLowerCase().includes('rainforest')) {
-            eco = 'rainforest';
+        } else if (translated_text.toLowerCase().includes('rainforest')) {
+            eco = 'regenwouden';
             ecoSentences = rainforestSentences;
-        } else if (recordedText.toLowerCase().includes('grassland')) {
-            eco = 'grassland';
+        } else if (translated_text.toLowerCase().includes('grassland')) {
+            eco = 'graslanden';
             ecoSentences = grasslandSentences;
-        } else if (recordedText.toLowerCase().includes('tundra')) {
-            eco = 'tundra';
+        } else if (translated_text.toLowerCase().includes('tundra')) {
+            eco = "toendra\'s";
             ecoSentences = tundraSentences;
         } else {
             console.error("A known ecosystem was stated, but was not found in the " +
@@ -200,23 +237,26 @@ function afterRecording(recordedText) {
         }
 
         // say, "I've heard about that ecosystem! Here's what I know about it:"
-        phrases = ["I've heard about " + eco + "s before! Here's what I know about them.",
-            "Oh yes, " + eco + "s are very interesting. Here's what I know.",
-            "Here's what I know about " + eco + "s. They're fascinating!"
+        phrases = ["Ik heb over " + eco + " gehoord! Hier is wat ik erover weet.",
+            "Oh ja, " + eco + " zijn erg interessant. Hier is wat ik erover weet.",
+            "Hier is wat ik weet over " + eco + ". Ze zijn fascinerend!"
         ];
     } else {
         // check if there was an *unknown* ecosystem stated... e.g., "I don't know about that ecosystem yet"
         var saidUnknownEco = false;
         var unknownEcosystems = ['forest', 'taiga', 'wetland', 'freshwater', 'coral reef', 'savanna', 'mountain', 'plain'];
         var unknownRegex = new RegExp(unknownEcosystems.join("|"), "i");
-        saidUnknownEco = unknownRegex.test(recordedText);
+        saidUnknownEco = unknownRegex.test(translated_text);
+        var translatedknownEcosystems = ['oceanen', 'woestijnen', 'regenwouden', 'graslanden', 'toendra\'s'];
 
         if (saidUnknownEco) {
-            phrases = ["Hmmm, I haven't heard about that ecosystem before, but I know about " + chooseRandomPhrase(knownEcosystems) + "s.",
-                "I don't know about that ecosystem yet, but I've heard about " + chooseRandomPhrase(knownEcosystems) + "s."
+            phrases = ["Hmmm, ik heb nog niet over dat ecosysteem gehoord, maar ik weet wel over " + chooseRandomPhrase(translatedknownEcosystems) + ".",
+                "Ik weet nog niet over dat ecosysteem, maar ik heb wel over " + chooseRandomPhrase(translatedknownEcosystems) + " gehoord."
             ];
         } else {
-            phrases = ["Sorry, what was that?", "Oh, pardon?", "I didn't quite understand that. Pardon?"];
+            phrases = ["Ik heb dat niet helemaal begrepen. Kun je dat herhalen?", "Sorry, ik heb dat gemist. Kun je dat herhalen?", "Pardon? Kun je dat herhalen?",
+                    "Sorry, kun je dat herhalen?"
+                ];
         }
     }
 

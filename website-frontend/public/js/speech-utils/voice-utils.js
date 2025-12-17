@@ -7,15 +7,53 @@ var msg; // this is global because of a strange bug: https://stackoverflow.com/a
  * @param {*} onSpeak: a function that's called when zhorai starts speaking
  * @param {*} callback: a function that's called when zhorai is done speaking
  */
-function speakText(text, onSpeak, callback) {
+async function translateToDutch(text) {
+  // Controleer eerst of de API beschikbaar is
+  if (!("Translator" in window)) {
+    console.error("Translator API wordt niet ondersteund door deze browser.");
+    return null;
+  }
+
+  // Optioneel: check beschikbaarheid van het vertaalmodel
+  const avail = await Translator.availability({
+    sourceLanguage: "en",
+    targetLanguage: "nl"
+  });
+  if (avail === "unavailable") {
+    console.error("Vertaalmodel voor en→nl is niet beschikbaar.");
+    return null;
+  }
+
+  // Maak een Translator-instantie aan
+  const translator = await Translator.create({
+    sourceLanguage: "en",
+    targetLanguage: "nl"
+  });
+
+  try {
+    // Vertaal de tekst
+    const translation = await translator.translate(text);
+    return translation;
+  } catch (err) {
+    console.error("Vertaling mislukt:", err);
+    return null;
+  } finally {
+    // Ruim resources op
+    translator.destroy();
+  }
+}
+
+async function speakText(text, onSpeak, callback) {
     // FROM https://developers.google.com/web/updates/2014/01/Web-apps-that-talk-Introduction-to-the-Speech-Synthesis-API
-    msg = new SpeechSynthesisUtterance(makePhonetic(text));
+    console.log('Zhorai is about to say: ' + text);
+    translated_text = await translateToDutch(text);
+    msg = new SpeechSynthesisUtterance(makePhonetic(translated_text));
     
     msg.voice = zhoraiVoice; // Note: some voices don't support altering params
     msg.volume = 1; // 0 to 1
     msg.rate = 1; // 0.1 to 10
     msg.pitch = 1.2; // 0 to 2
-    msg.lang = 'en-US';
+    msg.lang = 'nl-NL';
 
     // onSpeak e.g., set the button to the "hear again" button
     if (onSpeak) {

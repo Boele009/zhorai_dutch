@@ -17,6 +17,41 @@ var loadingGif;
 var currBtnIsMic = true;
 var dataFilename = "../../website-backend/receive-text/data/name.txt";
 
+async function translateToEnglish(text) {
+  // Controleer eerst of de API beschikbaar is
+  if (!("Translator" in window)) {
+    console.error("Translator API wordt niet ondersteund door deze browser.");
+    return null;
+  }
+
+  // Optioneel: check beschikbaarheid van het vertaalmodel
+  const avail = await Translator.availability({
+    sourceLanguage: "nl",
+    targetLanguage: "en"
+  });
+  if (avail === "unavailable") {
+    console.error("Vertaalmodel voor nl→en is niet beschikbaar.");
+    return null;
+  }
+
+  // Maak een Translator-instantie aan
+  const translator = await Translator.create({
+    sourceLanguage: "nl",
+    targetLanguage: "en"
+  });
+
+  try {
+    // Vertaal de tekst
+    const translation = await translator.translate(text);
+    return translation;
+  } catch (err) {
+    console.error("Vertaling mislukt:", err);
+    return null;
+  } finally {
+    // Ruim resources op
+    translator.destroy();
+  }
+}
 
 /* -------------- Initialize functions -------------- */
 function showPurpleText(text) {
@@ -113,20 +148,20 @@ function startStage() {
         case 'sayHi':
             // have student say, "Hi Zhorai"
             // 1. write, "Say hi" in textbox
-            infoLabel.innerHTML = 'Say "hi"!';
+            infoLabel.innerHTML = 'Zeg "hallo"!';
             break;
         case 'zAskName':
             // have zhorai say, "Hi there! What’s your name?"
-            var phrases = ["Hello there! I don't think we've met. What's your name?",
-                "Hello! I don't remember meeting you before. What's your name?",
-                "Hi there! What’s your name?"
+            var phrases = ["Hoihoi! Volgens mij hebben wij elkaar nog nooit ontmoet. Wat is jouw naam?",
+                "Hallo! Ik herinner me jouw niet. Wat is jouw naam?",
+                "Hoi daar! Wat is jouw naam?"
             ];
             zhoraiSpeech = chooseRandomPhrase(phrases);
             goToNext = true;
             break;
         case 'respondWithName':
             // 1. write "what's your name?"
-            infoLabel.innerHTML = 'Zhorai says, "What\'s your name?"';
+            infoLabel.innerHTML = 'Zhorai zegt, "Wat is jouw naam?"';
             // 2. have student say, "I’m <name>" or "<name>" etc.
             // 3. this will take us to the "afterRecording" and then "introReceiveData()" 
             // method
@@ -134,14 +169,14 @@ function startStage() {
             break;
         case 'respondWithPlace':
             // 1. have student say, "I’m from <place>" or "<place>" etc.
-            infoLabel.innerHTML = 'Zhorai says, "Where are you from?"';
+            infoLabel.innerHTML = 'Zhorai zegt, "Waar kom je vandaan?"';
             // 2. this will take us to the "afterRecording" and then "introReceiveData()" 
             // method 
             // 3. zhorai will respond with "Interesting! I've never heard of <place>, before. 
             // I'd love to learn more."
             break;
         case 'zFinish':
-            infoLabel.innerHTML = 'Find out what Zhorai knows about your planet!';
+            infoLabel.innerHTML = 'Kom erachter wat Zhorai weet over jouw planeet!';
             // change button to Activity 1 button: Ask Zhorai about ecosystems
             break;
         default:
@@ -150,7 +185,8 @@ function startStage() {
     finishStage(goToNext, zhoraiSpeech);
 }
 
-function afterRecording(recordedText) {
+async function afterRecording(recordedText) {
+    var translatedText = await translateToEnglish(recordedText);
     var recordingIsGood = false;
     var zhoraiSpeech = '';
     switch (stages[currStage]) {
@@ -160,7 +196,7 @@ function afterRecording(recordedText) {
                 'g\'day', 'what\'s up', 'good morning', 'good afternoon', 'meet'
             ];
             var regex = new RegExp(greetings.join("|"), "i");
-            var saidHi = regex.test(recordedText);
+            var saidHi = regex.test(translatedText);
             if (saidHi) {
                 recordingIsGood = true;
             } else {
@@ -171,7 +207,7 @@ function afterRecording(recordedText) {
         case 'respondWithName':
         case 'respondWithPlace':
             // get name/place from server:
-            parseText(recordedText, 'Name', stages[currStage] + "_intro");
+            parseText(translatedText, 'Name', stages[currStage] + "_intro");
             // this will call the introReceiveData() method, in which zhorai responds
             break;
         default:
@@ -195,13 +231,13 @@ function introReceiveData(filedata) {
                 currName = filedata.charAt(0).toUpperCase() + filedata.slice(1);
                 SentenceManager.saveSessionData('name', currName);
                 recordingIsGood = true;
-                phrases = ["Hello, " + currName + "! Nice to meet you! Where are you from?",
-                    "Nice to meet you, " + currName + "! Where are you from?",
-                    currName + ". What a nice name! Where are you from?"
+                phrases = ["Hoi, " + currName + "! Leuk jou te ontmoeten! Waar kom je vandaan?",
+                    "Leuk jou te ontmoeten, " + currName + "! Waar kom je vandaan?",
+                    currName + ". Wat een mooie naam! Waar kom je vandaan?"
                 ];
             } else {
-                phrases = ["I didn't quite catch that.", "Sorry, I missed that.", "Pardon?",
-                    "Sorry, could you repeat that?"
+                phrases = ["Ik heb dat niet helemaal begrepen. Kun je dat herhalen?", "Sorry, ik heb dat gemist. Kun je dat herhalen?", "Pardon? Kun je dat herhalen?",
+                    "Sorry, kun je dat herhalen?"
                 ];
             }
             break;
@@ -212,13 +248,13 @@ function introReceiveData(filedata) {
                 currPlace = filedata.charAt(0).toUpperCase() + filedata.slice(1);
                 SentenceManager.saveSessionData('place', currPlace);
                 recordingIsGood = true;
-                phrases = ["Ooo, " + currPlace + " sounds interesting! I'm from planet Igbruhmmelkin, so I've never heard of " + currPlace + " before! Tell me more!",
-                    currPlace + " sounds cool! I have no idea where that is, since I'm from another planet! I'd love to hear more!",
-                    "Interesting! I'm from planet Igbruhmmelkin. I've never heard of " + currPlace + " before. Can you tell me more?"
+                phrases = ["Ooo, " + currPlace + " klinkt interessant! Ik kom van de planeet Igbruhmmelkin, dus ik heb nog nooit van " + currPlace + " gehoord! Vertel me meer!",
+                    currPlace + " klinkt cool! Ik heb geen idee waar dat is, aangezien ik van een andere planeet kom! Ik zou graag meer willen horen!",
+                    "Interessant! Ik kom van de planeet Igbruhmmelkin. Ik heb nog nooit van " + currPlace + " gehoord. Kun je me er meer over vertellen?"
                 ];
             } else {
-                phrases = ["I didn't quite catch that.", "Sorry, I missed that.", "Pardon?",
-                    "Sorry, could you repeat that, " + currName + "?"
+                phrases = ["Ik heb dat niet helemaal begrepen. Kun je dat herhalen?", "Sorry, ik heb dat gemist. Kun je dat herhalen?", "Pardon? Kun je dat herhalen?",
+                    "Sorry, kun je dat herhalen?"
                 ];
             }
             break;

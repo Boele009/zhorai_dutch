@@ -8,31 +8,33 @@ var loadingGif;
 var currBtnIsMic = true;
 var mindmapPath = "../../website-backend/receive-text/data/mindmap.txt";
 var currentAnimal = "";
+var translatedAnimal = "";
 var knownAnimals = [
-    'bees',
-    'birds',
-    // 'butterflies',
-    // 'leopards',
-    'cows',
-    // 'owls',
-    // 'fireflies',
-    'dolphins',
-    'fish',
-    // 'lobsters',
-    // 'starfish',
-    // 'swordfish',
-    'whales',
-    'polarbears',
-    // 'arcticfoxes',
-    // 'yaks',
-    'reindeer',
-    'camels',
-    // 'scorpions',
-    // 'elephants',
-    // 'giraffes',
-    'lions'
+    ['bees', 'bijen'],
+    ['birds', 'vogels'],
+    // ['butterflies', 'vlinders'],
+    // ['leopards', 'luipaarden'],
+    ['cows', 'koeien'],
+    // ['owls', 'uilen'],
+    // ['fireflies', 'vuurvliegjes'],
+    ['dolphins', 'dolfijnen'],
+    ['fish', 'vissen'],
+    // ['lobsters', 'kreeften'],
+    // ['starfish', 'zeesterren'],
+    // ['swordfish', 'zwaardvis'],
+    ['whales', 'walvissen'],
+    ['polarbears', 'ijsberen'],
+    // ['arcticfoxes', 'poolvossen'],
+    // ['yaks', 'jakken'],
+    ['reindeer', 'rendieren'],
+    ['camels', 'kamelen'],
+    // ['scorpions', 'schorpioenen'],
+    // ['elephants', 'olifanten'],
+    // ['giraffes', 'giraffen'],
+    ['lions', 'leeuwen']
 ];
 var oldAnimals = [];
+var sm = null; // sentence manager
 
 // File paths for saving animal info
 var animalDir = 'animals/';
@@ -104,13 +106,13 @@ function switchButtonTo(toButton) {
     }
 }
 
-function mod2ReceiveData(filedata) {
+async function mod2ReceiveData(filedata) {
     // Check to see if there was a hangup because of a bad sentence
     if (filedata.includes("BAD ENGLISH")) {
         // one of the sentences entered was confusing english... have to redo :(
-        var phrases = ['One of those sentences confused me and I forgot the rest of what you said! Could you please re-teach me about ' + currentAnimal + '?',
-            'I\'m sorry, I got confused in the middle of what you were saying. Could you please teach me again about ' + currentAnimal + '?',
-            'Oops, I got confused by something you said and forgot everything about ' + currentAnimal + '! Could you please talk to me again about ' + currentAnimal + '?'
+        var phrases = ['Een van die zinnen begreep ik niet en ik vergat de rest van wat je zei! Kun je me alsjeblieft opnieuw leren over ' + translatedAnimal + '?',
+            'Het spijt me, ik raakte in de war tijdens wat je zei. Kun je me alsjeblieft opnieuw leren over ' + translatedAnimal + '?',
+            'Oeps, ik raakte in de war door iets dat je zei en vergat alles over ' + translatedAnimal + '! Kun je alsjeblieft opnieuw met me praten over ' + translatedAnimal + '?'
         ];
         var toSpeak = chooseRandomPhrase(phrases);
         showPurpleText(toSpeak);
@@ -119,9 +121,9 @@ function mod2ReceiveData(filedata) {
         switchButtonTo('micAndTextFileBtn');
     } else if (filedata.includes("ERR_NO_TEXT")) {
         // There were no sentences saved for this animal... Let the user know:
-        var phrases = ['Hmm, I actually don\'t know anything about ' + currentAnimal + ' yet. Could you please teach me about them?',
-            'I haven\'t learned about ' + currentAnimal + ' yet, actually! What do you know about them?',
-            'Oops! I don\'t know anything about ' + currentAnimal + '. Could you teach me some things about them?'
+        var phrases = ['Hmm, ik weet eigenlijk nog niets over ' + translatedAnimal + '. Kun je me alsjeblieft erover leren?',
+            'Ik heb nog niets geleerd over ' + translatedAnimal + ', eigenlijk! Wat weet jij erover?',
+            'Oeps! Ik weet niets over ' + translatedAnimal + '. Kun je me alsjeblieft wat dingen erover leren?'
         ];
         var toSpeak = chooseRandomPhrase(phrases);
         showPurpleText(toSpeak);
@@ -144,10 +146,15 @@ function mod2ReceiveData(filedata) {
         // Add the current animal to the list of oldAnimals:
         // oldAnimals.push(currentAnimal);
         // currentAnimal = chooseRandomPhrase(knownAnimals.filter(checkNewAnimal));
-        currentAnimal = chooseRandomPhrase(knownAnimals);
+        // Choose a random entry from knownAnimals and use its English name (first element)
+        var idx = Math.floor(Math.random() * knownAnimals.length);
+        animalarray = knownAnimals[idx];
+        currentAnimal = animalarray[0];
+        translatedAnimal = animalarray[1];
 
         // update the prompt and sentences with the new animal
         setAnimalPrompt(currentAnimal);
+        console.log('Next animal: ' + currentAnimal, "translated: " + translatedAnimal);
         sm.setDivToSessionSentences(currentAnimal);
     }
 }
@@ -157,14 +164,14 @@ function checkNewAnimal(animal) {
 }
 
 function setAnimalPrompt() {
-    animalPromptLabel.innerHTML = "Zhorai would like to know about <span style=\"text-decoration: underline;\">" +
-        currentAnimal + "</span>. Could you teach it about them?";
-    textFileLabel.innerHTML = "Once you're done teaching Zhorai about " +
-        currentAnimal + ", click the button below.";
+    animalPromptLabel.innerHTML = "Zhorai wil graag meer leren over <span style=\"text-decoration: underline;\">" +
+        translatedAnimal + "</span>. Kun je het daarover leren?";
+    textFileLabel.innerHTML = "Als je klaar bent met het leren van Zhorai over " +
+        translatedAnimal + ", klik dan op de knop hieronder.";
 }
 
 /* -------------- Once the page has loaded -------------- */
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
     // Initialize variables:
     currStage = 0;
     animalPromptLabel = document.getElementById('animalPromptLabel');
@@ -173,7 +180,12 @@ document.addEventListener('DOMContentLoaded', function () {
     loadingGif = document.getElementById('loadingGif');
     textFileLabel = document.getElementById('textFileLabel');
     textFileBtn = document.getElementById('textFileBtn');
-    currentAnimal = chooseRandomPhrase(knownAnimals);
+    var idx = Math.floor(Math.random() * knownAnimals.length);
+    animalarray = knownAnimals[idx];
+    console.log(animalarray);
+    currentAnimal = animalarray[0];
+    translatedAnimal = animalarray[1];
+    console.log('Next animal: ' + currentAnimal, "translated: " + translatedAnimal);
 
     // Restart speech synthesizer:
     // (see https://stackoverflow.com/a/58775876/8162699)
@@ -182,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setAnimalPrompt();
 
     // Create sentence manager and put all known sentences about the current animal on the page
-    var sm = new SentenceManager(document.getElementById("sentencesDiv"), "./img/x_del.svg");
+    sm = new SentenceManager(document.getElementById("sentencesDiv"), "./img/x_del.svg");
     // Add all sentences in memory to page:
     sm.setDivToSessionSentences(currentAnimal);
 
@@ -196,9 +208,9 @@ document.addEventListener('DOMContentLoaded', function () {
     textFileBtn.addEventListener('click', function () {
         switchButtonTo('loading');
         // say something about how we're going to display Zhorai's thoughts after parsing
-        var phrases = ['Thanks for teaching me about ' + currentAnimal + '! Let me think about all these new things and show you my thoughts.',
-            "Wow, " + currentAnimal + " sound really interesting! Let me think for a bit and then I'll show you my thoughts.",
-            currentAnimal + " sound fascinating! Now I want to visit earth and all of it's life! I'll show you what I understand after I think for a little while."
+        var phrases = ['Bedankt voor het leren over ' + translatedAnimal + '! Laat me nadenken over al deze nieuwe dingen en ik laat je mijn gedachten zien.',
+            "Wauw, " + translatedAnimal + " klinkt echt interessant! Laat me even nadenken en dan laat ik je mijn gedachten zien.",
+            translatedAnimal + " klinkt fascinerend! Nu wil ik de aarde en al het leven daarop bezoeken! Ik laat je zien wat ik begrijp nadat ik even heb nagedacht."
         ];
         var toSpeak = chooseRandomPhrase(phrases);
         showPurpleText(toSpeak);

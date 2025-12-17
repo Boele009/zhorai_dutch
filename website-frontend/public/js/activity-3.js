@@ -30,6 +30,38 @@ var knownAnimals = [
     // 'giraffes',
     'lions'
 ];
+var translateanimalTable = {
+    'bees': 'bijen',
+    'birds': 'vogels',
+    // 'butterflies': 'vlinders',
+    // 'leopards': 'luipaarden',
+    'cows': 'koeien',
+    // 'owls': 'uilen',
+    // 'fireflies': 'vuurvliegjes',
+    'dolphins': 'dolfijnen',
+    'fish': 'vissen',
+    // 'lobsters': 'kreeften',
+    // 'starfish': 'zeesterren',
+    // 'swordfish': 'zwaardvis',
+    'whales': 'walvissen',
+    'polarbears': 'ijsberen',
+    // 'arcticfoxes': 'poolvossen',
+    // 'yaks': 'jakken',
+    'reindeer': 'rendieren',
+    'camels': 'kamelen',
+    // 'scorpions': 'schorpioenen',
+    // 'elephants': 'olifanten',
+    // 'giraffes': 'giraffen',
+    'lions': 'leeuwen'
+}
+
+var translateecoTable = {
+    'desert': 'woestijnen',
+    'rainforest': 'regenwouden',
+    'grassland': 'graslanden',
+    'tundra': "toendra\'s",
+    'ocean': 'oceanen'
+}
 
 // File paths for mindmap creation
 var dataDir = 'data/';
@@ -44,6 +76,79 @@ var justEcosGraph = [
     ["tundra", 1.4992122650146484, 0.5913272500038147, "tundra"],
     ["ocean", 0.5613870620727539, -1.175655722618103, "ocean"],
 ];
+
+async function translateToEnglish(text) {
+    // Controleer eerst of de API beschikbaar is
+    if (!("Translator" in window)) {
+        console.error("Translator API wordt niet ondersteund door deze browser.");
+        return null;
+    }
+
+    // Optioneel: check beschikbaarheid van het vertaalmodel
+    const avail = await Translator.availability({
+        sourceLanguage: "nl",
+        targetLanguage: "en"
+    });
+    if (avail === "unavailable") {
+        console.error("Vertaalmodel voor nl→en is niet beschikbaar.");
+        return null;
+    }
+
+    // Maak een Translator-instantie aan
+    const translator = await Translator.create({
+        sourceLanguage: "nl",
+        targetLanguage: "en"
+    });
+
+    try {
+        // Vertaal de tekst
+        const translation = await translator.translate(text);
+        return translation;
+    } catch (err) {
+        console.error("Vertaling mislukt:", err);
+        return null;
+    } finally {
+        // Ruim resources op
+        translator.destroy();
+    }
+    }
+
+    async function translateToDutch(text) {
+    // Controleer eerst of de API beschikbaar is
+    if (!("Translator" in window)) {
+        console.error("Translator API wordt niet ondersteund door deze browser.");
+        return null;
+    }
+
+    // Optioneel: check beschikbaarheid van het vertaalmodel
+    const avail = await Translator.availability({
+        sourceLanguage: "en",
+        targetLanguage: "nl"
+    });
+    if (avail === "unavailable") {
+        console.error("Vertaalmodel voor en→nl is niet beschikbaar.");
+        return null;
+    }
+
+    // Maak een Translator-instantie aan
+    const translator = await Translator.create({
+        sourceLanguage: "en",
+        targetLanguage: "nl"
+    });
+
+    try {
+        // Vertaal de tekst
+        const translation = await translator.translate(text);
+        return translation;
+    } catch (err) {
+        console.error("Vertaling mislukt:", err);
+        return null;
+    } finally {
+        // Ruim resources op
+        translator.destroy();
+    }
+    }
+
 
 /* -------------- Initialize functions -------------- */
 function showPurpleText(text) {
@@ -193,14 +298,16 @@ function isAnimalPlural(animal) {
     return isPlural;
 }
 
-function afterRecording(recordedText) {
+async function afterRecording(recordedText) {
+
+    var translatedText = await translateToEnglish(recordedText);
     var saidAnimal = false;
     var animal = '';
     var zhoraiSpeech = '';
     var phrases = [];
 
     // test to see if what they said has an animal in it... e.g., "I didn't quite catch that"
-    animal = getAnimal(recordedText);
+    animal = getAnimal(translatedText);
     if (!isAnimalPlural(animal)) {
         animal = convertAnimalToPlural(animal);
     }
@@ -208,12 +315,13 @@ function afterRecording(recordedText) {
 
     // if there was a known animal stated...
     if (saidAnimal) {
-        phrases = ["Oh yes! Let me think about " + animal + " for a second.",
-            "I'll think about " + animal + " for a bit and let you know!",
-            "Oh yeah, " + animal + " sound interesting. Let me think about where they might be from."
+        translated_animal = translateanimalTable[animal] || animal;
+        phrases = ["Oh ja! Laat mij even denken over " + translated_animal + "!",
+            "Ik zal even nadenken over " + translated_animal + " en je laten weten!",
+            "Oh ja, " + translated_animal + " klinkt interessant. Laat me nadenken over waar ze zouden kunnen leven."
         ];
     } else {
-        phrases = ["Sorry, what was that?", "Oh, pardon?", "I didn't quite understand that. Pardon?"];
+        phrases = ["Sorry, wat was dat?", "Oh, sorry?", "Ik begreep het niet helemaal. Sorry?"];
     }
 
     zhoraiSpeech = chooseRandomPhrase(phrases);
@@ -240,7 +348,7 @@ function afterRecording(recordedText) {
     }
 }
 
-function mod3ReceiveData(filedata, stage) {
+async function mod3ReceiveData(filedata, stage) {
     if (stage.includes('mindmap')) {
         // We're done parsing and reading the mindmap text file!
         // create the mindmap!
@@ -272,21 +380,21 @@ function mod3ReceiveData(filedata, stage) {
                     eco = key;
                 }
             });
-
-            // say, "Based on what I know about Earth, here's where I would guess the animal 
+            translated_animal = translateanimalTable[animal] || animal;
+            translated_eco = translateecoTable[eco] || eco;
+            // say, "Based on what I know about Earth, here's where I would guess the animal
             // comes from.":
-            phrases = ["Based on what I know about Earth, I would guess " + animal +
-                " live in " + eco + "s.",
-                "I would guess " + animal + " live in " + eco + "s from what I know.",
-                "I think " + animal + " are from " + eco + "s based on what you told me."
+            phrases = ["Van wat ik weet over de aarde, zou ik raden dat " + translated_animal +
+                " leven in " + translated_eco + ".",
+                "Ik zou raden dat " + translated_animal + " leven in " + translated_eco + " op basis van wat ik weet."
             ];
 
             createHistogram(ecoData);
         } else {
             // error checking:
-            phrases = ["I don't know enough about that animal to guess where it's from.",
-                "I haven't heard enough about that animal to say where it lives.",
-                "Hmm, I'm not sure! I haven't heard much about that animal."
+            phrases = ["Ik weet niet genoeg over dat dier om te raden waar het vandaan komt.",
+                "Ik heb niet genoeg gehoord over dat dier om te zeggen waar het leeft.",
+                "Hmm, ik weet het niet zeker! Ik heb niet veel gehoord over dat dier."
             ];
         }
 
