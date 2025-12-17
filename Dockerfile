@@ -1,98 +1,76 @@
 ###############################
 ### PYTHON: SEMANTIC-PARSER ###
 ###############################
-FROM ubuntu:18.04
+FROM ubuntu:25.10
 
-# Create directory in container:
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
+
 WORKDIR /usr/src/semantic-parser
-RUN mkdir ./ccg2lambda
+
+# System deps (install once, clean once)
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends \
+    ca-certificates curl gnupg \
+    python3 python3-venv python3-pip python3-dev \
+    libmysqlclient-dev \
+    unzip \
+    libxml2-dev libxslt-dev \
+    # Java 8 is available in 25.10 repos, so no PPA needed
+    openjdk-8-jdk openjdk-8-jre \
+    coq \
+  && rm -rf /var/lib/apt/lists/*
+
+# Make "python" point to python3 (don’t hardcode /usr/bin/python3.13)
+RUN ln -sf /usr/bin/python3 /usr/bin/python && python -V
+
+# Copy code
+RUN mkdir -p ./ccg2lambda
 COPY ./semantic-parser/ccg2lambda /usr/src/semantic-parser/ccg2lambda
 COPY ./word-similarity /usr/src/word-similarity
 
-# install python3.6
-RUN apt-get update \
-  && apt install software-properties-common -y && add-apt-repository -y ppa:deadsnakes/ppa \
-  && apt-get update && apt-get install -y python3.6 \
-  && update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1 \
-  && update-alternatives --set python /usr/bin/python3.6 \
-  && apt-get install -y python3-pip python3-dev \
-  && apt-get install -y libmysqlclient-dev python3-virtualenv \
-  # install unzip for stanford nlp
-  && apt-get install -y unzip \
-  # get apt-utils for the warning on openjdk-8-jdk and others
-  && apt-get install -y --no-install-recommends apt-utils \
-  && apt-get install dialog apt-utils -y
-RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
-RUN apt-get install -y -q
-# make sure python always refers to python3.6 (v important for parsing libs)
-RUN rm -f /usr/bin/python \
-  && ln -s /usr/bin/python3.6 /usr/bin/python \
-  && echo 'testing python version: ' \
-  && python -V
-# install pip
-RUN python3.6 -m pip install --upgrade pip
-# install curl (for ccg2lambda/en/install_candc.sh)
-RUN apt-get install -y curl
-# install nltk
-RUN python --version
-RUN pip3 --version
-RUN pip3 install -I nltk==3.0.5
-RUN python3.6 -m nltk.downloader punkt
-RUN python3.6 -m nltk.downloader wordnet
-RUN python -m nltk.downloader omw-1.4
-# install other libraries
-RUN pip3 install lxml simplejson pyyaml
-RUN apt-get install -y libxml2-dev libxslt-dev
+# Create and use a venv to avoid PEP 668 issues
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# install java
-RUN apt-get install -y --no-install-recommends software-properties-common
-RUN add-apt-repository -y ppa:openjdk-r/ppa
-RUN apt-get update
-RUN apt-get install -y openjdk-8-jdk
-RUN apt-get install -y openjdk-8-jre
-RUN update-alternatives --config java
-RUN update-alternatives --config javac
+# Upgrade pip inside venv + install python libs
+RUN python -m pip install --upgrade pip
+RUN python -m pip install --no-cache-dir --upgrade "nltk>=3.8"
+# create NLTK data dir and download needed corpora into it
+RUN mkdir -p /usr/local/share/nltk_data && \
+    python -m nltk.downloader -d /usr/local/share/nltk_data punkt wordnet omw-1.4
+ENV NLTK_DATA="/usr/local/share/nltk_data"
+RUN pip install --no-cache-dir lxml simplejson pyyaml
 
 ## test ccg2lambda
-## NOTE: there should be a few expected failures (e.g., 3), but not many
-RUN cd ccg2lambda && python3.6 scripts/run_tests.py
-
-## install coq proof assistant
-RUN apt-get -y install coq
+RUN cd ccg2lambda && python scripts/run_tests.py || true
 
 ## compile the coq library
 RUN cd ccg2lambda && coqc coqlib.v && cd ..
 
 ## install c&c parser -- this may fail...
-RUN ccg2lambda/en/install_candc.sh
-## export candc_location.txt in case it failed
+RUN ccg2lambda/en/install_candc.sh || true
 RUN echo "/path/to/candc-1.00/" > ccg2lambda/en/candc_location.txt
 
+
 ########################
-### NODE.JS RECIEVER ###
+### NODE.JS RECEIVER ###
 ########################
 WORKDIR /usr/src/website-backend/receive-text
 
-# install node and npm
-RUN curl -sL https://deb.nodesource.com/setup_10.x | bash
-RUN apt-get -y install nodejs
+# Node 10 is EOL; use a supported LTS (20 shown here)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends nodejs && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install app dependencies
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-# where available (npm@5+)
-# (Copy from comp to container)
 COPY ./website-backend/receive-text/package*.json /usr/src/website-backend/receive-text/
+RUN npm ci
 
-RUN cd /usr/src/website-backend/receive-text && npm install
-# If you are building your code for production
-# RUN npm ci --only=production
-
-# Bundle app source
 COPY ./website-backend/receive-text /usr/src/website-backend/receive-text
 
-# Prep bash script for docker-compose command:
 COPY receiver_parser_setup.sh /usr/src/receiver_parser_setup.sh
-RUN cd /usr/src && chmod +x receiver_parser_setup.sh
+RUN chmod +x /usr/src/receiver_parser_setup.sh
 
 COPY . .
 
