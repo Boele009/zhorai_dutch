@@ -16,6 +16,7 @@ services:
       options:
         max-size: "20m"
         max-file: "5"
+    working_dir: /usr/src/website-backend/receive-text
     command: bash -c "cd /usr/src && ./receiver_parser_setup.sh"
 
   web:

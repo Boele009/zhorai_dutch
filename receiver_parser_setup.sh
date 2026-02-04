@@ -1,14 +1,16 @@
 #!/bin/bash
+set -euxo pipefail
 
 # we want everything to run in python3, so let's make python==python3
 rm -f /usr/bin/python
-ln -s /usr/bin/python3.6 /usr/bin/python
+ln -s /usr/bin/python3 /usr/bin/python
 
 # reinstall required libraries etc. 
 # (NOTE: not sure why they're not persisting from the Dockerfile...)
-pip3 install lxml simplejson pyyaml -I nltk==3.0.5
-python3.6 -c "import nltk; nltk.download('wordnet')"
-pip3 install -U nltk[corenlp]
+pip3 install -U lxml simplejson pyyaml "nltk>=3.8"
+python3 -m nltk.downloader wordnet omw-1.4
+pip3 install -U "nltk[corenlp]>=3.8"
+
 
 # get stanford-corenlp, if not already there:
 # NOTE: stanford-corenlp has changed their download system and folder naming structure AGAIN

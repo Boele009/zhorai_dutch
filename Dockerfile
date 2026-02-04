@@ -72,6 +72,6 @@ COPY ./website-backend/receive-text /usr/src/website-backend/receive-text
 COPY receiver_parser_setup.sh /usr/src/receiver_parser_setup.sh
 RUN chmod +x /usr/src/receiver_parser_setup.sh
 
-COPY . .
+# COPY . .
 
 EXPOSE 5000
