@@ -19,7 +19,7 @@ app.use(express.static('public'));
 // using them for serving the ws variable so that each page has it)
 var wssUrl = '';
 if (process.env.NODE_ENV && process.env.NODE_ENV === 'production') {
-    wssUrl = "wss://zhorai.csail.mit.edu/ws/"; // TODO: fix for production
+    wssUrl = "wss://zhorai.nl/ws/"; // TODO: fix for production
 } else {
     // development mode
     wssUrl = 'ws://localhost:5000';

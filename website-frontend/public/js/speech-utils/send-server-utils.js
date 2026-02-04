@@ -6,7 +6,9 @@ function getCookie(key) {
 
     return keyValue ? keyValue[2] : null;
 }
-var wssUrl = decodeURIComponent(getCookie('wssUrl'));
+//var wssUrl = decodeURIComponent(getCookie('wssUrl'));
+var wssUrl = "wss://zhorai.nl/ws/"
+console.log('Using wssUrl: ' + wssUrl);
 
 // Util Functions
 function sendText(text) {
