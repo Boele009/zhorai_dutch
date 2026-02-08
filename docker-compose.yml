@@ -2,7 +2,7 @@ version: "3.0"
 services:
   server:
     build: ./
-    restart: on-failure
+    restart: always
     volumes:
       - ./website-backend/receive-text:/usr/src/website-backend/receive-text
       - ./semantic-parser:/usr/src/semantic-parser
@@ -21,7 +21,7 @@ services:
 
   web:
     build: ./website-frontend
-    restart: on-failure
+    restart: always
     volumes:
       - ./website-frontend:/usr/src/app
     environment:
